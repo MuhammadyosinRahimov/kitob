@@ -14,12 +14,19 @@ export class BooksService {
 
   async create(
     data: CreateBookDto, 
-    fileData: { 
-      pdf: { path: string; filename: string; size: number },
-      cover?: { path: string; filename: string }
+    files: { 
+      pdf: Express.Multer.File,
+      cover?: Express.Multer.File
     }, 
     userId: string
   ): Promise<Book> {
+    const pdfUrl = await this.storageService.saveFile(files.pdf);
+    let coverImageUrl = null;
+    
+    if (files.cover) {
+      coverImageUrl = await this.storageService.saveFile(files.cover);
+    }
+
     return this.prisma.book.create({
       data: {
         title: data.title,
@@ -30,11 +37,11 @@ export class BooksService {
         categoryId: data.categoryId,
         createdById: userId,
         
-        // File data
-        pdfUrl: `/uploads/${fileData.pdf.filename}`,
-        pdfFileName: fileData.pdf.filename,
-        fileSize: fileData.pdf.size,
-        coverImageUrl: fileData.cover ? `/uploads/${fileData.cover.filename}` : null,
+        // Cloud URLs
+        pdfUrl: pdfUrl,
+        pdfFileName: files.pdf.originalname,
+        fileSize: files.pdf.size,
+        coverImageUrl: coverImageUrl,
         
         // Default or calculated
         pageCount: 0,

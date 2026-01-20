@@ -21,13 +21,6 @@ export class BooksController {
     { name: 'pdf', maxCount: 1 },
     { name: 'cover', maxCount: 1 },
   ], {
-    storage: diskStorage({
-      destination: './uploads',
-      filename: (req, file, cb) => {
-        const randomName = Array(32).fill(null).map(() => (Math.round(Math.random() * 16)).toString(16)).join('');
-        return cb(null, `${randomName}${extname(file.originalname)}`);
-      }
-    }),
     fileFilter: (req, file, cb) => {
       if (file.fieldname === 'pdf' && file.mimetype !== 'application/pdf') {
         return cb(new BadRequestException('Only PDF files are allowed for the book!'), false);
@@ -51,15 +44,8 @@ export class BooksController {
     }
 
     return this.booksService.create(createBookDto, {
-      pdf: {
-        path: pdfFile.path,
-        filename: pdfFile.filename,
-        size: pdfFile.size,
-      },
-      cover: coverFile ? {
-        path: coverFile.path,
-        filename: coverFile.filename,
-      } : undefined,
+      pdf: pdfFile,
+      cover: coverFile,
     }, req.user.id);
   }
 
