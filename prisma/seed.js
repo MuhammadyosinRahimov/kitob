@@ -14,7 +14,11 @@ async function main() {
   });
 
   if (existingUser) {
-    console.log(`User with email ${email} already exists.`);
+    await prisma.user.update({
+      where: { email },
+      data: { role: 'SUPERADMIN' }
+    });
+    console.log(`User with email ${email} already exists. Role updated to SUPERADMIN.`);
     return;
   }
 
