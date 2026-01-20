@@ -1,0 +1,80 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String    @id @default(uuid())
+  email        String    @unique
+  fullName     String
+  passwordHash String
+  role         String    @default("USER")
+  isActive     Boolean   @default(true)
+  createdAt    DateTime  @default(now())
+  lastLoginAt  DateTime?
+  
+  books        Book[]    // Books added by this user
+  downloads    Download[] // Books downloaded by this user
+  favorites    Favorite[]
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String   @unique
+  books     Book[]
+  createdAt DateTime @default(now())
+}
+
+model Book {
+  id            String   @id @default(uuid())
+  title         String
+  author        String
+  description   String?  
+  difficulty    String   // Beginner, Intermediate, Advanced
+  language      String   // ru, en
+  pdfUrl        String
+  pdfFileName   String
+  fileSize      Int
+  pageCount     Int?
+  coverImageUrl String?
+  downloadCount Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  categoryId    String?
+  category      Category? @relation(fields: [categoryId], references: [id])
+  
+  createdById   String
+  createdBy     User     @relation(fields: [createdById], references: [id])
+  downloads     Download[]
+  favorites     Favorite[]
+}
+
+model Download {
+  id        String   @id @default(uuid())
+  userId    String
+  bookId    String
+  downloadedAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+  book      Book     @relation(fields: [bookId], references: [id])
+}
+
+model Favorite {
+  id        String   @id @default(uuid())
+  userId    String
+  bookId    String
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id])
+  book      Book     @relation(fields: [bookId], references: [id])
+
+  @@unique([userId, bookId])
+}
