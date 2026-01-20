@@ -1,40 +1,47 @@
 import { Injectable } from '@nestjs/common';
-import { v2 as cloudinary } from 'cloudinary';
-const streamifier = require('streamifier');
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class StorageService {
+  private readonly uploadDir = path.join(process.cwd(), 'uploads');
+
   constructor() {
-    cloudinary.config({
-      cloud_name: process.env.CLOUDINARY_CLOUD_NAME?.trim(),
-      api_key: process.env.CLOUDINARY_API_KEY?.trim(),
-      api_secret: process.env.CLOUDINARY_API_SECRET?.trim(),
-    });
+    this.ensureUploadDir();
+  }
+
+  private async ensureUploadDir() {
+    try {
+      await fs.access(this.uploadDir);
+    } catch {
+      await fs.mkdir(this.uploadDir, { recursive: true });
+    }
   }
 
   async saveFile(file: Express.Multer.File): Promise<string> {
-    return new Promise((resolve, reject) => {
-      const uploadStream = cloudinary.uploader.upload_stream(
-        {
-          folder: 'science-hub',
-          resource_type: 'auto', // Important to handle both images and PDFs
-        },
-        (error, result) => {
-          if (result) {
-            resolve(result.secure_url);
-          } else {
-            reject(error);
-          }
-        }
-      );
+    const fileExtension = path.extname(file.originalname);
+    const fileName = `${crypto.randomBytes(16).toString('hex')}${fileExtension}`;
+    const filePath = path.join(this.uploadDir, fileName);
 
-      streamifier.createReadStream(file.buffer).pipe(uploadStream);
-    });
+    await fs.writeFile(filePath, file.buffer);
+
+    return `/uploads/${fileName}`;
   }
 
   async deleteFile(fileUrl: string): Promise<void> {
-    // Cloudinary deletion requires public ID, which is tricky from just a URL.
-    // For now, we skip deletion or just log it.
-    console.log(`Cloudinary deletion requested for: ${fileUrl}`);
+    if (!fileUrl) return;
+    
+    // Extract filename from URL (assuming /uploads/filename.ext)
+    const fileName = fileUrl.split('/uploads/')[1];
+    if (!fileName) return;
+
+    const filePath = path.join(this.uploadDir, fileName);
+    
+    try {
+      await fs.unlink(filePath);
+    } catch (error) {
+      console.warn(`Failed to delete file ${filePath}:`, error);
+    }
   }
 }
